@@ -17,10 +17,15 @@ from django.db.models import Q
 from jwt import decode
 from jwt.exceptions import ExpiredSignatureError
 from django.conf import settings
+import json
+from utils.constants import LoginStatus, TokenStatus
 
 
 @csrf_exempt
 def register(req):
+    """
+    This view is used to register a new user.
+    """
     if req.method == "POST":
         try:
             body = parse_body(req.body)
@@ -30,7 +35,7 @@ def register(req):
                 User.objects.get(
                     Q(username__iexact=username) | Q(email__iexact=username)
                 )
-                return get_error_response("USER ALREADY EXISTS")
+                return get_error_response(LoginStatus.USER_ALREADY_EXISTS.value)
             except ObjectDoesNotExist:
                 user = User(**body, email=username)
                 user.set_password(password)
@@ -55,13 +60,16 @@ def register(req):
                 )
 
         except Exception as ex:
-            return get_error_response(ex.args)
+            return get_error_response((json.dumps(ex.args)))
     else:
         return get_method_error(req, "POST")
 
 
 @csrf_exempt
 def login(req):
+    """
+    This view is used to login a user.
+    """
     if req.method == "POST":
         try:
             body = parse_body(req.body)
@@ -75,7 +83,7 @@ def login(req):
             # validate his password.
             check = user.check_password(password)
             if not check:
-                return get_error_response("INVALID PASSWORD")
+                return get_error_response(LoginStatus.INVALID_PASSWORD.value)
 
             payload = generate_tokens(user)
             token = Tokens(
@@ -94,16 +102,19 @@ def login(req):
             )
 
         except ObjectDoesNotExist:
-            return get_error_response("USER NOT EXISTS")
+            return get_error_response(LoginStatus.USER_NOT_EXISTS.value)
 
         except Exception as ex:
-            return get_error_response(ex.args)
+            return get_error_response((json.dumps(ex.args)))
     else:
         return get_method_error(req, "POST")
 
 
 @csrf_exempt
 def refresh_token(req):
+    """
+    This view is used to refresh the access token.
+    """
     if req.method == "POST":
         try:
             body = parse_body(req.body)
@@ -118,10 +129,10 @@ def refresh_token(req):
             ).first()
 
             if rf_token is None:
-                return get_error_response("NOT A VALID REFRESH TOKEN")
+                return get_error_response(TokenStatus.NOT_A_VALID_REFRESH_TOKEN.name)
 
             if rf_token and rf_token.is_black_listed:
-                return get_error_response("TOKEN BLACKLISTED")
+                return get_error_response(TokenStatus.BLAKLISTED.name)
 
             # validate token.
             payload = decode(refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
@@ -146,22 +157,24 @@ def refresh_token(req):
             )
 
         except ObjectDoesNotExist:
-            return get_error_response("NOT A VALID REFRESH TOKEN")
+            return get_error_response(TokenStatus.NOT_A_VALID_REFRESH_TOKEN.name)
 
         except ExpiredSignatureError:
-            return get_error_response("NOT A VALID REFRESH TOKEN")
+            return get_error_response(TokenStatus.NOT_A_VALID_REFRESH_TOKEN.name)
 
         except Exception as ex:
-            return get_error_response(ex.args)
+            return get_error_response((json.dumps(ex.args)))
     else:
         return get_method_error(req, "POST")
-
 
 
 # Create your views here.
 @csrf_exempt
 @validate_token
 def profile_upload(*args, **kwargs):
+    """
+    This view is used to upload the profile image of the user.
+    """
     req, user_id = args[0], kwargs["user_id"]
     if req.method == "POST":
         try:
@@ -186,6 +199,9 @@ def profile_upload(*args, **kwargs):
 @csrf_exempt
 @validate_token
 def product_upload(*args, **kwargs):
+    """
+    This view is used to upload the product images.
+    """
     req, user_id = args[0], kwargs["user_id"]
     if req.method == "POST":
         try:

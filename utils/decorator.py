@@ -3,31 +3,35 @@ from django.conf import settings
 from jwt.exceptions import ExpiredSignatureError
 from utils.response import get_error_response
 from apis.models import Tokens
+from utils.constants import HttpStatus, TokenStatus
 
 
 def validate_token(func):
-    # lot of edge cases to be handled at this decorator.
+    """
+    This decorator is used to validate the access token.
+    """
+
     def wrapper(*args, **kwargs):
         try:
             request = args[0]
             auth_header = request.headers.get("Authorization")
             if auth_header is None or not isinstance(auth_header, str):
-                return get_error_response("Not authorized")
+                return get_error_response(HttpStatus.UNAUTHORIZED.name, 401)
             token = auth_header[7:]
 
             # check if this token is already black-listed.
-            token_instance = Tokens.objects.filter(token__iexact=token).first()
+            token_ins = Tokens.objects.filter(token__iexact=token).first()
 
-            if token_instance is None:
-                return get_error_response("NOT A VALID ACCESS TOKEN")
+            if token_ins is None:
+                return get_error_response(TokenStatus.INVALID.name, 401)
 
-            if token_instance and token_instance.is_black_listed:
-                return get_error_response("TOKEN BLACKLISTED")
+            if token_ins and token_ins.is_black_listed:
+                return get_error_response(TokenStatus.BLAKLISTED.name, 401)
 
             payload = decode(token, settings.SECRET_KEY, algorithms=["HS256"])
             return func(*args, **kwargs, user_id=payload.get("id"))
         except ExpiredSignatureError:
-            return get_error_response("token expired or invalid")
+            return get_error_response(TokenStatus.EXPIRED.name, 401)
         except Exception as ex:
             return get_error_response(f"{ex.args[0]}")
 
