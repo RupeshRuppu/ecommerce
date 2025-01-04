@@ -4,13 +4,14 @@ from cloudinary.uploader import upload
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
+from django.forms.models import model_to_dict
 from django.views.decorators.csrf import csrf_exempt
 from jwt import decode
 from jwt.exceptions import ExpiredSignatureError
 
 import utils.response as response
 from apis.models import Tokens, User
-from utils.constants import LoginStatus, TokenStatus
+from utils.constants import LoginStatus, ProductItem, TokenStatus
 from utils.decorator import validate_token
 from utils.jwt import generate_tokens
 
@@ -213,7 +214,7 @@ def product_upload(*args, **kwargs):
             category_id, result = req.POST.get("category_id"), []
             category = Category.objects.get(id=category_id)
             for image in images:
-                res = upload(image, folder=f"e-commerce-products/{category_id}")
+                res = upload(image, folder=f"e-commerce-products/{category.name}")
                 url = res["secure_url"]
                 product = Product(
                     image_url=url, category=category, price=100, name="Men Clothes"
@@ -226,3 +227,76 @@ def product_upload(*args, **kwargs):
             return response.get_error_response(str(e.args[0]))
     else:
         return response.get_method_error(req, "POST")
+
+
+@csrf_exempt
+@validate_token
+def get_products(*args, **kwargs):
+    """
+    This view is used to get all the products.
+    """
+    req = args[0]
+    if req.method == "GET":
+        try:
+            categories = dict(
+                map(
+                    lambda itm: (str(itm[0]), itm[1]),
+                    Category.objects.values_list("id", "name"),
+                )
+            )
+            products = Product.objects.values(*ProductItem.REQUIRED_FIELDS.value)
+            for product in products:
+                product["category"] = categories[str(product["category_id"])]
+                del product["category_id"]
+            return response.get_success_response(list(products))
+
+        except Exception as e:
+            return response.get_error_response(str(e.args[0]))
+    else:
+        return response.get_method_error(req, "GET")
+
+
+@csrf_exempt
+@validate_token
+def get_product(*args, **kwargs):
+    """
+    This view is used to get a particular product.
+    """
+    req, pid = args[0], kwargs["pid"]
+    if req.method == "GET":
+        try:
+            product = Product.objects.get(id=pid)
+            res = model_to_dict(product, exclude=["stock_quantity", "category"])
+            return response.get_success_response(res)
+
+        except ObjectDoesNotExist:
+            return response.get_error_response("Product not found!")
+
+        except Exception as e:
+            return response.get_error_response(str(e.args[0]))
+    else:
+        return response.get_method_error(req, "GET")
+
+
+@csrf_exempt
+@validate_token
+def get_categories(*args, **kwargs):
+    """
+    This view is used to get all the categories.
+    """
+    req = args[0]
+    if req.method == "GET":
+        try:
+            all_fields = [field.name for field in Category._meta.get_fields()]
+            fields_to_include = [
+                field
+                for field in all_fields
+                if field not in ["created_at", "updated_at", "product"]
+            ]
+            categories = Category.objects.values(*fields_to_include)
+            return response.get_success_response(list(categories))
+
+        except Exception as e:
+            return response.get_error_response(str(e.args[0]))
+    else:
+        return response.get_method_error(req, "GET")

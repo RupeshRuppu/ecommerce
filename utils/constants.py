@@ -25,3 +25,16 @@ class LoginStatus(Enum):
     INVALID_PASSWORD = "INVALID PASSWORD"
     USER_NOT_EXISTS = "USER NOT EXISTS"
     USER_ALREADY_EXISTS = "USER ALREADY EXISTS"
+
+
+class ProductItem(Enum):
+    REQUIRED_FIELDS = [
+        "id",
+        "name",
+        "price",
+        "image_url",
+        "description",
+        "size",
+        "color",
+        "category_id",
+    ]
