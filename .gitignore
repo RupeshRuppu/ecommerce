@@ -3,3 +3,4 @@ venv/
 */firebase.json
 todos*
 .DS_Store
+.ruff_cache
