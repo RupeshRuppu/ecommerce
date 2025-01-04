@@ -1,24 +1,18 @@
-from utils.response import get_error_response, get_success_response, get_method_error
-from django.views.decorators.csrf import csrf_exempt
-from utils.decorator import validate_token
-from apis.models import User
+import json
+
 from cloudinary.uploader import upload
-from django.views.decorators.csrf import csrf_exempt
-from utils.response import (
-    get_error_response,
-    get_success_response,
-    get_method_error,
-    parse_body,
-)
-from apis.models import User, Tokens
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from utils.jwt import generate_tokens
 from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt
 from jwt import decode
 from jwt.exceptions import ExpiredSignatureError
-from django.conf import settings
-import json
+
+import utils.response as response
+from apis.models import Tokens, User
 from utils.constants import LoginStatus, TokenStatus
+from utils.decorator import validate_token
+from utils.jwt import generate_tokens
 
 
 @csrf_exempt
@@ -28,14 +22,16 @@ def register(req):
     """
     if req.method == "POST":
         try:
-            body = parse_body(req.body)
+            body = response.parse_body(req.body)
             username, password = body.get("username"), body.get("password")
             # check if a user already exists with these credentials.
             try:
                 User.objects.get(
                     Q(username__iexact=username) | Q(email__iexact=username)
                 )
-                return get_error_response(LoginStatus.USER_ALREADY_EXISTS.value)
+                return response.get_error_response(
+                    LoginStatus.USER_ALREADY_EXISTS.value
+                )
             except ObjectDoesNotExist:
                 user = User(**body, email=username)
                 user.set_password(password)
@@ -52,7 +48,7 @@ def register(req):
 
                 user.save()
                 token.save()
-                return get_success_response(
+                return response.get_success_response(
                     {
                         "access_token": payload["token"],
                         "refresh_token": payload["rtoken"],
@@ -60,9 +56,9 @@ def register(req):
                 )
 
         except Exception as ex:
-            return get_error_response((json.dumps(ex.args)))
+            return response.get_error_response((json.dumps(ex.args)))
     else:
-        return get_method_error(req, "POST")
+        return response.get_method_error(req, "POST")
 
 
 @csrf_exempt
@@ -72,7 +68,7 @@ def login(req):
     """
     if req.method == "POST":
         try:
-            body = parse_body(req.body)
+            body = response.parse_body(req.body)
             username, password = body.get("username"), body.get("password")
 
             # check if a user exists.
@@ -83,7 +79,7 @@ def login(req):
             # validate his password.
             check = user.check_password(password)
             if not check:
-                return get_error_response(LoginStatus.INVALID_PASSWORD.value)
+                return response.get_error_response(LoginStatus.INVALID_PASSWORD.value)
 
             payload = generate_tokens(user)
             token = Tokens(
@@ -94,7 +90,7 @@ def login(req):
                 user=user,
             )
             token.save()
-            return get_success_response(
+            return response.get_success_response(
                 {
                     "access_token": payload["token"],
                     "refresh_token": payload["rtoken"],
@@ -102,12 +98,12 @@ def login(req):
             )
 
         except ObjectDoesNotExist:
-            return get_error_response(LoginStatus.USER_NOT_EXISTS.value)
+            return response.get_error_response(LoginStatus.USER_NOT_EXISTS.value)
 
         except Exception as ex:
-            return get_error_response((json.dumps(ex.args)))
+            return response.get_error_response((json.dumps(ex.args)))
     else:
-        return get_method_error(req, "POST")
+        return response.get_method_error(req, "POST")
 
 
 @csrf_exempt
@@ -117,11 +113,11 @@ def refresh_token(req):
     """
     if req.method == "POST":
         try:
-            body = parse_body(req.body)
+            body = response.parse_body(req.body)
             refresh_token = body.get("refresh_token")
 
             if refresh_token is None:
-                return get_error_response("NO REFRESH TOKEN PROVIDED IN BODY")
+                return response.get_error_response("NO REFRESH TOKEN PROVIDED IN BODY")
 
             # check the refresh_token is black-listed
             rf_token = Tokens.objects.filter(
@@ -129,10 +125,12 @@ def refresh_token(req):
             ).first()
 
             if rf_token is None:
-                return get_error_response(TokenStatus.NOT_A_VALID_REFRESH_TOKEN.name)
+                return response.get_error_response(
+                    TokenStatus.NOT_A_VALID_REFRESH_TOKEN.name
+                )
 
             if rf_token and rf_token.is_black_listed:
-                return get_error_response(TokenStatus.BLAKLISTED.name)
+                return response.get_error_response(TokenStatus.BLAKLISTED.name)
 
             # validate token.
             payload = decode(refresh_token, settings.SECRET_KEY, algorithms=["HS256"])
@@ -149,7 +147,7 @@ def refresh_token(req):
             )
             rf_token.save()
             token.save()
-            return get_success_response(
+            return response.get_success_response(
                 {
                     "access_token": payload["token"],
                     "refresh_token": payload["rtoken"],
@@ -157,15 +155,19 @@ def refresh_token(req):
             )
 
         except ObjectDoesNotExist:
-            return get_error_response(TokenStatus.NOT_A_VALID_REFRESH_TOKEN.name)
+            return response.get_error_response(
+                TokenStatus.NOT_A_VALID_REFRESH_TOKEN.name
+            )
 
         except ExpiredSignatureError:
-            return get_error_response(TokenStatus.NOT_A_VALID_REFRESH_TOKEN.name)
+            return response.get_error_response(
+                TokenStatus.NOT_A_VALID_REFRESH_TOKEN.name
+            )
 
         except Exception as ex:
-            return get_error_response((json.dumps(ex.args)))
+            return response.get_error_response((json.dumps(ex.args)))
     else:
-        return get_method_error(req, "POST")
+        return response.get_method_error(req, "POST")
 
 
 # Create your views here.
@@ -181,17 +183,17 @@ def profile_upload(*args, **kwargs):
             # Get image files from the req.FILES
             image = req.FILES.get("image")
             if image is None:
-                return get_error_response("No image data found!")
+                return response.get_error_response("No image data found!")
             result = upload(image, public_id=user_id, folder="user-profiles")
             user = User.objects.get(id=user_id)
             user.profile_url = result["secure_url"]
             user.save()
-            return get_success_response({"url": result["secure_url"]})
+            return response.get_success_response({"url": result["secure_url"]})
 
         except Exception as e:
-            return get_error_response(str(e.args[0]))
+            return response.get_error_response(str(e.args[0]))
     else:
-        return get_method_error(req, "POST")
+        return response.get_method_error(req, "POST")
 
 
 # TODO : category comes from UI and upload under those folder.
@@ -202,7 +204,7 @@ def product_upload(*args, **kwargs):
     """
     This view is used to upload the product images.
     """
-    req, user_id = args[0], kwargs["user_id"]
+    req, _ = args[0], kwargs["user_id"]
     if req.method == "POST":
         try:
             # Get image files from the req.FILES
@@ -211,9 +213,9 @@ def product_upload(*args, **kwargs):
             for image in images:
                 response = upload(image, folder=f"e-commerce-products/{category}")
                 result.append(response["secure_url"])
-            return get_success_response({"uploaded_files": result})
+            return response.get_success_response({"uploaded_files": result})
 
         except Exception as e:
-            return get_error_response(str(e.args[0]))
+            return response.get_error_response(str(e.args[0]))
     else:
-        return get_method_error(req, "POST")
+        return response.get_method_error(req, "POST")

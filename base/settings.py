@@ -2,10 +2,11 @@
 Django settings for base project.
 """
 
-from pathlib import Path
 from os import getenv
-from dotenv import load_dotenv
+from pathlib import Path
+
 import cloudinary
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

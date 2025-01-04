@@ -1,6 +1,8 @@
 from json import loads
+
 from django.http import JsonResponse
-from utils.constants import ResponseStatus, HttpStatus
+
+from utils.constants import HttpStatus, ResponseStatus
 
 
 def parse_body(body):

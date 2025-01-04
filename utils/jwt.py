@@ -1,7 +1,9 @@
-from apis.models import User
 from datetime import datetime, timedelta, timezone
+
 from django.conf import settings
 from jwt import encode
+
+from apis.models import User
 
 ALGORITHM = "HS256"
 

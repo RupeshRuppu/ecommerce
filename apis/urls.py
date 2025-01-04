@@ -1,14 +1,14 @@
 from django.urls import path
-from .views import profile_upload, product_upload
-from .views import *
+
+from . import views
 
 urlpatterns = [
-    path("register/", register, name="register"),
-    path("login/", login, name="login"),
-    path("refresh-token/", refresh_token, name="refresh-token"),
+    path("register/", views.register, name="register"),
+    path("login/", views.login, name="login"),
+    path("refresh-token/", views.refresh_token, name="refresh-token"),
 ]
 
 urlpatterns += [
-    path("profile-upload/", profile_upload),
-    path("product-upload/", product_upload),
+    path("profile-upload/", views.profile_upload),
+    path("product-upload/", views.product_upload),
 ]

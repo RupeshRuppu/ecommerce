@@ -1,9 +1,10 @@
-from jwt import decode
 from django.conf import settings
+from jwt import decode
 from jwt.exceptions import ExpiredSignatureError
-from utils.response import get_error_response
+
 from apis.models import Tokens
 from utils.constants import HttpStatus, TokenStatus
+from utils.response import get_error_response
 
 
 def validate_token(func):
