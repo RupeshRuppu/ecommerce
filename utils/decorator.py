@@ -30,7 +30,8 @@ def validate_token(func):
                 return get_error_response(TokenStatus.BLAKLISTED.name, 401)
 
             payload = decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-            return func(*args, **kwargs, user_id=payload.get("id"))
+            kwargs["user_id"] = payload.get("id")
+            return func(*args, **kwargs)
         except ExpiredSignatureError:
             return get_error_response(TokenStatus.EXPIRED.name, 401)
         except Exception as ex:

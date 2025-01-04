@@ -4,3 +4,4 @@ venv/
 todos*
 .DS_Store
 .ruff_cache
+test_code*

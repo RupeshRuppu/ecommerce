@@ -14,6 +14,8 @@ from utils.constants import LoginStatus, TokenStatus
 from utils.decorator import validate_token
 from utils.jwt import generate_tokens
 
+from .models import Category, Product
+
 
 @csrf_exempt
 def register(req):
@@ -204,15 +206,20 @@ def product_upload(*args, **kwargs):
     """
     This view is used to upload the product images.
     """
-    req, _ = args[0], kwargs["user_id"]
+    req = args[0]
     if req.method == "POST":
         try:
-            # Get image files from the req.FILES
             images = list(filter(lambda img: img, req.FILES.getlist("images")))
-            category, result = req.POST.get("category"), []
+            category_id, result = req.POST.get("category_id"), []
+            category = Category.objects.get(id=category_id)
             for image in images:
-                response = upload(image, folder=f"e-commerce-products/{category}")
-                result.append(response["secure_url"])
+                res = upload(image, folder=f"e-commerce-products/{category_id}")
+                url = res["secure_url"]
+                product = Product(
+                    image_url=url, category=category, price=100, name="Men Clothes"
+                )
+                result.append(url)
+                product.save()
             return response.get_success_response({"uploaded_files": result})
 
         except Exception as e:
