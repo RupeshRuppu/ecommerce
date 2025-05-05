@@ -23,7 +23,7 @@ class Tokens(models.Model):
     expires_at = models.DateTimeField(blank=False, null=False)
     token = models.TextField(null=False, blank=False)
     refresh_token = models.TextField(null=False, blank=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey("apis.User", on_delete=models.CASCADE)
     is_black_listed = models.BooleanField(default=False)
 
     class Meta:
@@ -53,9 +53,12 @@ class Product(models.Model):
     size = models.CharField(max_length=255, null=True, choices=choices)
     color = models.CharField(max_length=255, null=True)
     stock_quantity = models.IntegerField(default=0, null=False)
-    category = models.ForeignKey("Category", on_delete=models.SET_NULL, null=True)
+    category = models.ForeignKey("apis.Category", on_delete=models.SET_NULL, null=True)
     rating = models.ForeignKey(
-        "Rating", on_delete=models.SET_NULL, null=True, related_name="product_rating"
+        "apis.Rating",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="product_rating",
     )
     image_url = models.TextField(null=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -86,9 +89,9 @@ class Rating(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     score = models.DecimalField(max_digits=3, decimal_places=2, null=False)
     rating_count = models.IntegerField(default=0, null=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey("apis.User", on_delete=models.CASCADE)
     product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="rating_product"
+        "apis.Product", on_delete=models.CASCADE, related_name="rating_product"
     )
 
     class Meta:
@@ -100,8 +103,8 @@ class Rating(models.Model):
 
 class Favorites(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    user = models.ForeignKey("apis.User", on_delete=models.CASCADE)
+    product = models.ForeignKey("apis.Product", on_delete=models.CASCADE)
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
